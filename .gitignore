@@ -46,5 +46,5 @@ terraform.lock.hcl*
 
 cloudflare-cert.pem
 cloudflare-key.pem
-setup.sh
+
 eks-rbac.md 
