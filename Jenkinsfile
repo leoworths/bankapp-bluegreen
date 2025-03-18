@@ -1,0 +1,130 @@
+pipeline {
+    agent any
+    tools {
+        jdk 'jdk17'
+        maven 'maven'
+    }
+    environment {
+        IMAGE_NAME = "leoworths/bankapp"
+        SCANNER_HOME= tool 'sonar-scanner'
+        VERSION_TAG= "v1.0.${env.BUILD_NUMBER}"
+    }
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/leoworths/bankapp-bluegreen.git'
+            }
+        }
+        stage('Compile & Test') {
+            steps {
+                sh "mvn clean compile"
+                sh "mvn test"
+            }
+        }
+        stage('Gitleaks Scan') {
+            steps {
+                sh "gitleaks detect --source . -r gitleaks-report.json -f json || true"
+            }
+        }
+        stage('Trivy File Scan') {
+            steps {
+                sh "trivy fs --format table -o fs.html ."
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh "$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=bankapp -Dsonar.projectName=bankapp -Dsonar.java.binaries=target"
+                }
+            }
+        }
+        stage('Quality Gate Check') {
+            steps {
+                script{
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+                }
+            }
+        }
+        stage('OWASP Dependencies Check'){
+            steps{
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'owasp'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Build & Package'){
+            steps {
+                sh "mvn clean package"
+            }
+        }
+        stage('Publish Artifacts to Nexus'){
+            steps {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven', mavenSettingsConfig: '', traceability: true)
+                    sh "mvn deploy"
+            }
+        }
+        stage('Docker Build & Tag Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh "docker build -t ${IMAGE_NAME}:${VERSION_TAG} ."
+                    }
+                }
+            }
+        }
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --format table -o image.html ${IMAGE_NAME}:${VERSION_TAG}"
+            }
+        }
+        stage('Docker Push Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh "docker push ${IMAGE_NAME}:${VERSION_TAG}"
+                    }
+                }
+            }
+        }
+        stage('Update Kubernetes Manifest in Git') {
+            steps {
+                checkout scm
+                script {
+                    sh "git pull origin main"
+                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${VERSION_TAG}|g' k8s/rollout.yaml"
+                    sh "git config --global user.email 'leoworths@gmail.com'"
+                    sh "git config --global user.name 'leoworths'"
+                    sh "git add k8s/rollout.yaml"
+                    sh "git commit -m 'Update image tag to ${VERSION_TAG}'"
+                    sh "git push origin main"
+                }
+            }
+        }
+        stage('CleanUP Docker Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker-cred') {
+                        sh "docker rmi ${IMAGE_NAME}:${VERSION_TAG}"
+                    }
+                }
+            }
+        }
+        post{
+            always{
+                emailext attachLog: true,
+                subject: "Build ${currentBuild.result}",
+                body: "Project: ${env.JOB_NAME}<br/>" +
+                    "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                    "URL: ${env.BUILD_URL}<br/>",
+                to: "leoworths@gmail.com",
+                attachmentsPatterns: "fs.html, image.html"
+            }
+        }
+    }
+}
+
+    
