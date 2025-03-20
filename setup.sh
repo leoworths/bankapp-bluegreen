@@ -77,7 +77,7 @@ eksctl create addon \
   --cluster bankapp-cluster \
   --name ebs-csi \
   --addon-name aws-ebs-csi-driver \
-  --service-account-role-arn arn:aws:iam::637874849810:role/AmazonEBS_CSI_DriverRole \
+  --service-account-role-arn arn:aws:iam::637423524942:role/AmazonEBS_CSI_DriverRole \
   --region us-east-1 \
   --force
 
@@ -108,7 +108,7 @@ kubectl argo rollouts dashboard
 kubectl port-forward svc/argocd-server -n argocd 8080:443 --address 0.0.0.0
 
 # Retrieve Argo CD credentials
-echo "ArgoCD URL: http://$(kubectl get svc -n argocd argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+echo "ArgoCD URL: http://$(kubectl get svc -n argocd argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
 echo "ArgoCD Password: $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
 echo "ArgoCD Username: admin"
 
@@ -125,8 +125,8 @@ helm install grafana grafana/grafana -n monitoring
 kubectl patch svc grafana -n monitoring -p '{"spec": {"type": "LoadBalancer"}}'
 
 # Retrieve Prometheus and Grafana URLs
-echo "Prometheus URL: http://$(kubectl get svc -n monitoring prometheus-kube-prometheus-stack-prometheus -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):9090"
-echo "Grafana URL: http://$(kubectl get svc -n monitoring grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+echo "Prometheus URL: http://$(kubectl get svc -n monitoring prometheus-kube-prometheus-stack-prometheus -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):9090"
+echo "Grafana URL: http://$(kubectl get svc -n monitoring grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
 echo "Grafana Admin Password: $(kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode)"
 
 # Install Prometheus Scraping for Argo Rollouts and Jenkins

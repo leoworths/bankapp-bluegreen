@@ -12,7 +12,7 @@ sudo docker run -d --name nexus -p 8081:8081 sonatype/nexus3
 echo "Nexus url is http://$(curl -s ifconfig.me):8081"
 #get nexus username and password
 echo "Nexus username is admin"
-echo "Nexus password is $(sudo docker exec -it nexus cat /nexus-data/admin.password)"
+echo "Nexus password is $(sudo docker exec -it nexus cat /sonatype-work/nexus3/admin.password)"
 
 #get jenkins public ip
 echo "Jenkins url is http://$(curl -s ifconfig.me):8080"
@@ -25,3 +25,7 @@ echo "Jenkins password is $(sudo cat /var/lib/jenkins/secrets/initialAdminPasswo
 #vi script.sh
 #chmod +x script.sh
 #./script.sh
+
+cat /var/log/cloud-init-output.log
+
+

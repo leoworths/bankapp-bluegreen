@@ -35,8 +35,6 @@ spec:
       - name: bankapp
         image: ${IMAGE_NAME}:${VERSION_TAG} # pull image from dockerhub
         imagePullPolicy: Always
-        imagePullSecrets:
-        - name: github-container-registry
         ports:
         - containerPort: 8080
         env:

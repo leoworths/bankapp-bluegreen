@@ -86,7 +86,7 @@ SONARQUBE_PASSWORD="admin"
 # Capture URLs and Credentials for Nexus
 NEXUS_URL="http://$(curl -s ifconfig.me):8081"
 NEXUS_USERNAME="admin"
-NEXUS_PASSWORD=$(sudo docker exec -it nexus cat /nexus-data/admin.password)
+NEXUS_PASSWORD=$(sudo docker exec nexus cat /sonatype-work/nexus3/admin.password)
 
 # Capture Jenkins URL and Credentials
 JENKINS_URL="http://$(curl -s ifconfig.me):8080"

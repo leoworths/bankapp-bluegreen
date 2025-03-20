@@ -2,28 +2,28 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = "${local.name}"
+  cluster_name    = local.name
   cluster_version = "1.31"
 
   # EKS Addons
   cluster_addons = {
-    coredns                = {
+    coredns = {
       most_recent = true
     }
     eks-pod-identity-agent = {
       most_recent = true
     }
-    kube-proxy             = {
+    kube-proxy = {
       most_recent = true
     }
-    vpc-cni                = {
+    vpc-cni = {
       most_recent = true
     }
   }
-  cluster_endpoint_public_access = true
+  cluster_endpoint_public_access           = true
   enable_cluster_creator_admin_permissions = true
-  create_cluster_security_group = true
-  create_node_security_group = true
+  create_cluster_security_group            = true
+  create_node_security_group               = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -35,12 +35,12 @@ module "eks" {
       capacity_type  = "SPOT"
       volume_size    = 20
       volume_type    = "gp3"
-      min_size = 1
-      max_size = 2
-      desired_size = 1
+      min_size       = 1
+      max_size       = 2
+      desired_size   = 1
     }
   }
-  tags = local.tags
+  tags       = local.tags
   depends_on = [module.vpc]
 }
 

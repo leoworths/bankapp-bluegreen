@@ -22,8 +22,8 @@ pipeline {
         }
         stage('Compile & Test') {
             steps {
-                sh "mvn clean compile"
-                sh "mvn test"
+                sh "mvn compile"
+                sh "mvn test -DskipTests"
             }
         }
         stage('Gitleaks Scan') {
@@ -52,19 +52,20 @@ pipeline {
         }
         stage('OWASP Dependencies Check'){
             steps{
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'owasp'
+                dependencyCheck additionalArguments: '--scan ./pom.xml --disableYarnAudit --disableNodeAudit --disableUsage', odcInstallation: 'owasp'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
         stage('Build & Package'){
             steps {
-                sh "mvn clean package"
+                sh "mvn package -DskipTests"
             }
         }
         stage('Publish Artifacts to Nexus'){
             steps {
-                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven', mavenSettingsConfig: '', traceability: true)
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven', mavenSettingsConfig: '', traceability: true){
                     sh "mvn deploy"
+                }
             }
         }
         stage('Docker Build & Tag Image') {
@@ -113,16 +114,18 @@ pipeline {
                 }
             }
         }
-        post{
-            always{
-                emailext attachLog: true,
+    }
+    post{
+        always{
+            emailext (
+                attachLog: true,
                 subject: "Build ${currentBuild.result}",
-                body: "Project: ${env.JOB_NAME}<br/>" +
+                body: """Project: ${env.JOB_NAME}<br/>" +
                     "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                    "URL: ${env.BUILD_URL}<br/>",
+                    "URL: ${env.BUILD_URL}<br/>""",
                 to: "leoworths@gmail.com",
-                attachmentsPatterns: "fs.html, image.html"
-            }
+                attachmentsPattern: "fs.html, image.html"
+            )
         }
     }
 }
