@@ -93,7 +93,7 @@ pipeline {
         }
         stage('Update Kubernetes Manifest in Git') {
             steps {
-                checkout scm
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/leoworths/bankapp-bluegreen.git'
                 script {
                     sh "git pull origin main"
                     sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${VERSION_TAG}|g' k8s/rollout.yaml"
