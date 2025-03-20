@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
       - name: bankapp
-        image: ${IMAGE_NAME}:${VERSION_TAG} # pull image from dockerhub
+        image: leoworths/bankapp:v1.0.10
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
