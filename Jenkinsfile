@@ -71,7 +71,7 @@ pipeline {
         stage('Docker Build & Tag Image') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-cred') {
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
                         sh "docker build -t ${IMAGE_NAME}:${VERSION_TAG} ."
                     }
                 }
@@ -85,7 +85,7 @@ pipeline {
         stage('Docker Push Image') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-cred') {
+                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
                         sh "docker push ${IMAGE_NAME}:${VERSION_TAG}"
                     }
                 }
@@ -93,15 +93,18 @@ pipeline {
         }
         stage('Update Kubernetes Manifest in Git') {
             steps {
-                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/leoworths/bankapp-bluegreen.git'
                 script {
-                    sh "git pull origin main"
-                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${VERSION_TAG}|g' k8s/rollout.yaml"
-                    sh "git config --global user.email 'leoworths@gmail.com'"
-                    sh "git config --global user.name 'leoworths'"
-                    sh "git add k8s/rollout.yaml"
-                    sh "git commit -m 'Update image tag to ${VERSION_TAG}'"
-                    sh "git push origin main"
+                    withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        sh "git clone https://$GIT_USERNAME:$GIT_PASSWORD@github.com/leoworths/bankapp-bluegreen.git"
+                        dir ("bankapp-bluegreen") {
+                        sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${VERSION_TAG}|g' k8s/rollout.yaml"
+                        sh "git config --global user.email 'leoworths@gmail.com'"
+                        sh "git config --global user.name 'leoworths'"
+                        sh "git add k8s/rollout.yaml"
+                        sh "git commit -m 'Update image tag to ${VERSION_TAG}'"
+                        sh "git push origin main"
+                        }
+                    }
                 }
             }
         }

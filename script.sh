@@ -28,4 +28,8 @@ echo "Jenkins password is $(sudo cat /var/lib/jenkins/secrets/initialAdminPasswo
 
 cat /var/log/cloud-init-output.log
 
+#to get nexus password
+docker exec -it container-name /bin/bash
+cd /sonatype-work/nexus3
+cat admin.password
 
