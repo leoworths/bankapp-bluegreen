@@ -30,6 +30,7 @@ cat /var/log/cloud-init-output.log
 
 #to get nexus password
 docker exec -it container-name /bin/bash
+ls 
 cd /sonatype-work/nexus3
 cat admin.password
 
