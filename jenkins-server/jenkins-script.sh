@@ -3,7 +3,9 @@ sudo apt update
 sudo apt install -y curl wget apt-transport-https ca-certificates software-properties-common
 
 #install java 17
-sudo apt install -y openjdk-17-jre-headless
+#sudo apt install -y openjdk-17-jre-headless
+sudo apt install -y temurin-17-jdk
+
 
 #install jenkins
 

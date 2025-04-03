@@ -4,8 +4,6 @@
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo update
 
-#to confirm
-helm search repo hashicorp/vault
 
 #create vault namespace
 kubectl create namespace vault 
@@ -15,11 +13,13 @@ kubectl create namespace prod
 kubectl create serviceaccount vault-auth -n prod
 kubectl create serviceaccount vault-auth -n default
 
-#install vault helm chart
-helm install vault hashicorp/vault -n vault --set server.dev.enabled=false 
+#copy vault-values.yaml file to vault pod
+nano vault-values.yaml
+or 
+vi vault-values.yaml
 
 #install vault helm chart with values
-helm install vault hashicorp/vault -n vault -f vault-values.yaml
+helm install vault hashicorp/vault -n vault -f vault-values.yaml --set server.dev.enabled=false
 
 
 #check vault installation
@@ -27,10 +27,12 @@ kubectl get all -n vault
 
 #kubectl config set-context --current --namespace=vault
 
-
+#initialize vault
 kubectl exec -it vault-0 -- vault operator init -key-shares=1 -key-threshold=1 -format=json > cluster-keys.json
+
 #unseal the vault
 kubectl exec -it vault-0 -- vault operator unseal $(cat cluster-keys.json | jq -r '.unseal_keys_b64[0]')
+
 #login to vault
 kubectl exec -it vault-0 -- vault login $(cat cluster-keys.json | jq -r '.root_token')
 
@@ -39,8 +41,6 @@ kubectl exec -it vault-1 -- vault operator raft join https://vault-0.vault.svc.c
 kubectl exec -it vault-2 -- vault operator raft join https://vault-0.vault.svc.cluster.local:8200
 
 
-#list pods
-kubectl get pods -n vault
 
 #unseal all vault pods
 kubectl exec -it vault-1 -- vault operator unseal $(cat cluster-keys.json | jq -r '.unseal_keys_b64[0]')
@@ -50,8 +50,8 @@ kubectl exec -it vault-2 -- vault operator unseal $(cat cluster-keys.json | jq -
 #verify vault
 kubectl exec -it vault-0 -- vault status
 
-vault status
-
+#list pods
+kubectl get pods -n vault
 
 #check cluster health
 kubectl exec -it vault-0 -- vault status
@@ -60,10 +60,16 @@ kubectl exec -it vault-2 -- vault status
 
 
 
-#access vault
-kubectl port-forward svc/vault 8200:8200 -n vault
-kubectl port-forward vault-0 8200:8200 -n vault
-#http://localhost:8200/ui
+#add ingress file
+nano vault-ingress.yaml
+or
+vi vault-ingress.yaml
+
+#install vault ingress
+kubectl apply -f vault-ingress.yaml -n vault
+
+#get service ip for dns resolution
+kubectl get svc -n vault
 
 
 #enable kubernetes auth
@@ -142,6 +148,35 @@ export CLOUDFLARE_API_TOKEN=$(kubectl exec -it vault-0 -n vault -- vault kv get 
 echo $CLOUDFLARE_API_TOKEN
 
 
+
+#create directory for audit logs
+kubectl exec -it vault-0 -n vault -- mkdir -p /var/log/vault
+mkdir -p /var/log/vault
+#audit logs
+kubectl exec -it vault-0 -n vault -- vault audit enable file file_path=/var/log/vault_audit.log
+
+#verify audit logs
+kubectl exec -it vault-0 -n vault -- vault audit list
+
+#read audit logs
+kubectl exec -it vault-0 -n vault -- cat /var/log/vault_audit.log
+#tail audit logs
+kubectl exec -it vault-0 -n vault -- tail -f /var/log/vault_audit.log
+#disable audit logs
+kubectl exec -it vault-0 -n vault -- vault audit disable file
+
+kubectl exec -it vault-0 -n vault -- vault audit list
+#delete audit logs
+kubectl exec -it vault-0 -n vault -- rm /var/log/vault_audit.log
+
+kubectl exec -it vault-0 -n vault -- vault audit list
+
+#access vault ui with domain name
+https://vault.worths.cloud/ui/vault/
+#access vault ui with ip address
+https://10.1.0.1:8200/ui/vault/
+--------------------------------------------
+
 #add cloudflare certificate and key to vault
 kubectl exec -it vault-0 -n vault -- vault kv put secret/cloudflare/certificate \
   cert=YOUR_CERTIFICATE \
@@ -167,33 +202,32 @@ kubectl create secret generic cloudflare-cert-secret \
 kubectl get secret cloudflare-cert-secret -n vault
 
 
-#forward the vault service
+
+# update helm values
+helm upgrade --install vault hashicorp/vault -n vault -f vault-values.yaml
+
+
+
+#access vault
+kubectl port-forward svc/vault 8200:8200 -n vault
+kubectl port-forward vault-0 8200:8200 -n vault
+#http://localhost:8200/ui
+
+
+#forward port
 kubectl port-forward svc/vault 8200:8200 -n vault
 
 #access vault ui
-https://localhost:8200/ui/vault/
+http://localhost:8200/ui
+
+##if want to access vault via loadbalancer
+kubectl get svc -n vault
+
+#access vault ui
+http://<EXTERNAL-IP>:8200/ui/vault/
+https://<EXTERNAL-IP>:8200/ui/vault/
+
 
 kubectl logs -f vault-0 -n vault
 
 
-#create directory for audit logs
-kubectl exec -it vault-0 -n vault -- mkdir -p /var/log/vault
-mkdir -p /var/log/vault
-#audit logs
-kubectl exec -it vault-0 -n vault -- vault audit enable file file_path=/var/log/vault_audit.log
-
-#verify audit logs
-kubectl exec -it vault-0 -n vault -- vault audit list
-
-#read audit logs
-kubectl exec -it vault-0 -n vault -- cat /var/log/vault_audit.log
-#tail audit logs
-kubectl exec -it vault-0 -n vault -- tail -f /var/log/vault_audit.log
-#disable audit logs
-kubectl exec -it vault-0 -n vault -- vault audit disable file
-
-kubectl exec -it vault-0 -n vault -- vault audit list
-#delete audit logs
-kubectl exec -it vault-0 -n vault -- rm /var/log/vault_audit.log
-
-kubectl exec -it vault-0 -n vault -- vault audit list

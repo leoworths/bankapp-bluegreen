@@ -52,13 +52,19 @@ pipeline {
         }
         stage('OWASP Dependencies Check'){
             steps{
-                dependencyCheck additionalArguments: '--scan ./pom.xml --disableYarnAudit --disableNodeAudit --disableUsage', odcInstallation: 'owasp'
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --disableUsage', odcInstallation: 'owasp'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
         stage('Build & Package'){
             steps {
                 sh "mvn package -DskipTests"
+            }
+        }
+        stage('Publish Artifacts to Nexus '){
+            steps {
+                    withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven' , mavenSettingsConfig: 'maven-settings' , traceability: true)
+                sh 'mvn deploy -DskipTests -Dmaven.test.skip=true'
             }
         }
         stage('Docker Build & Tag Image') {

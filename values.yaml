@@ -1,0 +1,65 @@
+#creating values.yaml file for prometheus-operator
+alertmanager:
+  enabled: true
+prometheus:
+  prometheusSpec:
+    service:
+      type: LoadBalancer
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: ebs-csi-sc
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+grafana:
+  enabled: true
+  service:
+    type: LoadBalancer
+  adminUser: admin
+  adminPassword: admin
+nodeExporter:
+  enabled: true
+  service:
+    type: ClusterIP
+kubeStateMetrics:
+  enabled: true
+  service:
+    type: ClusterIP
+blackbox exporter:
+  enabled : true
+  service:
+    type: ClusterIP
+additionalScrapeConfigs:
+  - job_name: node_exporter
+    static_configs:
+      - targets: ["node_exporter:9100"]
+  - job_name: kube-state-metrics
+    static_configs:
+      - targets: ["kube-state-metrics:8080"]
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://localhost:8080
+        - https://worths.cloud
+        - https://vault.worths.cloud
+    dns_sd_configs:
+      - names:
+          - worths.cloud
+          - vault.worths.cloud
+        type: A
+        port: 443
+        refresh_interval: "30s"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+

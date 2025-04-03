@@ -26,7 +26,7 @@ echo "Jenkins password is $(sudo cat /var/lib/jenkins/secrets/initialAdminPasswo
 #chmod +x script.sh
 #./script.sh
 
-sudocat /var/log/cloud-init-output.log
+sudo cat /var/log/cloud-init-output.log
 
 #to get nexus password
 docker exec -it container-name /bin/bash

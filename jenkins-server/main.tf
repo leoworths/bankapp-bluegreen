@@ -94,6 +94,13 @@ module "security_group" {
       cidr_blocks = "0.0.0.0/0"
     },
     {
+      from_port   = 9115
+      to_port     = 9115
+      protocol    = "tcp"
+      description = "blackbox exporter"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
       from_port   = 50000
       to_port     = 50000
       protocol    = "tcp"

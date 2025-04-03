@@ -30,3 +30,18 @@ spec:
   dnsNames:
   - worths.cloud
   - worths.publicvm.com 
+--- 
+#ceritificate for vault
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-certificate
+  namespace: prod
+spec:
+  secretName: vault-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - vault.worths.cloud
+  

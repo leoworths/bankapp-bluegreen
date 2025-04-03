@@ -28,19 +28,24 @@ persistence:
   volumeMounts:
     - name: vault-persistent-storage 
       mountPath: /vault/data  # Path where Vault expects to find the data
-    - name: cloudflare-cert-volume 
+    #- name: cloudflare-cert-volume 
+    - name: vault-cert-volume
       mountPath: /vault/tls  # Path where Vault expects the cert/key to be
   volumes:
     - name: vault-persistent-storage 
       persistentVolumeClaim:
         claimName: vault-pvc 
-    - name: cloudflare-cert-volume # Volume containing the cert/key
+    #- name: cloudflare-cert-volume # Volume containing the cert/key
+    - name: vault-cert-volume
       secret:
-        secretName: cloudflare-cert-secret  # Secret containing the cert/key
+        #secretName: cloudflare-cert-secret  # Secret containing the cert/key
+        secretName : vault-tls # Secret containing the cert/key
 tls:
   enabled: true
-  cert_file: /vault/tls/cloudflare-cert
-  key_file: /vault/tls/cloudflare-key
+  #cert_file: /vault/tls/cloudflare-cert
+  #key_file: /vault/tls/cloudflare-key
+  cert_file: /vault/tls/vault-crt
+  key_file: /vault/tls/vault-key
 injector:
   enabled: true
 disable_mlock: false 
