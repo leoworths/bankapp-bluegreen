@@ -61,12 +61,6 @@ pipeline {
                 sh "mvn package -DskipTests"
             }
         }
-        stage('Publish Artifacts to Nexus '){
-            steps {
-                    withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven' , mavenSettingsConfig: 'maven-settings' , traceability: true)
-                sh 'mvn deploy -DskipTests -Dmaven.test.skip=true'
-            }
-        }
         stage('Docker Build & Tag Image') {
             steps {
                 script {
