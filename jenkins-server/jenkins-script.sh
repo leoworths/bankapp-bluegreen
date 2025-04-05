@@ -3,8 +3,8 @@ sudo apt update
 sudo apt install -y curl wget apt-transport-https ca-certificates software-properties-common
 
 #install java 17
-#sudo apt install -y openjdk-17-jre-headless
-sudo apt install -y temurin-17-jdk
+sudo apt install -y openjdk-17-jre-headless
+#sudo apt install -y temurin-17-jdk
 
 
 #install jenkins
@@ -17,8 +17,9 @@ echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
 sudo apt-get update 
 sudo apt-get install jenkins -y
 
-sudo systemctl start jenkins
 sudo systemctl enable jenkins
+sudo systemctl start jenkins
+
 
 #install docker
 # Add Docker's official GPG key:
@@ -78,7 +79,7 @@ sudo chmod +x /usr/local/bin/eksctl
 #run sonarqube on docker
 sudo docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community
 #run nexus on docker
-sudo docker run -d --name nexus -p 8081:8081 sonatype/nexus3
+#sudo docker run -d --name nexus -p 8081:8081 sonatype/nexus3
 
 # Capture URLs and Credentials for SonarQube
 SONARQUBE_URL="http://$(curl -s ifconfig.me):9000"
