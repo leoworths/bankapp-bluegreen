@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
       - name: bankapp
-        image: leoworths/bankapp:v1.0.5
+        image: leoworths/bankapp:v1.0.6
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
