@@ -37,6 +37,7 @@ spec:
           {{- with secret "secret/mysql" -}}
           export MYSQL_PASSWORD = "{{ .Data.data.password }}"
           {{- end }}
+    spec:      
       containers:
       - name: mysql
         image: mysql:8.0
