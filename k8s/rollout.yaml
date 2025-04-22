@@ -84,8 +84,8 @@ spec:
       autoPromotionEnabled: false
       activeService: bankapp-active
       previewService: bankapp-preview
-      autoPromotionDelay: 30s
-      scalableDownDelaySeconds: 30
+      #autoPromotionDelay: 30s
+      #scalableDownDelaySeconds: 30
 
 
     
