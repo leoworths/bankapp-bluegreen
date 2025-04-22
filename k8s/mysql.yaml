@@ -78,22 +78,7 @@ spec:
       - name: mysql-persistent-storage
         persistentVolumeClaim:
           claimName: mysql-pvc
-      livenessProbe:
-        tcpSocket:
-          port: 3306
-        initialDelaySeconds: 30
-        timeoutSeconds: 5
-        periodSeconds: 10
-        successThreshold: 1
-        failureThreshold: 3
-      readinessProbe:
-        exec:
-          command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        timeoutSeconds: 5
-        successThreshold: 1
-        failureThreshold: 3
+    
 ---
 apiVersion: storage.k8s.io/v1
 kind : StorageClass 
