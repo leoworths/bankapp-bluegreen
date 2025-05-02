@@ -88,7 +88,7 @@ provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
   fsType: ext4
-  iopsPerGB: "10"
+  iopsPerGB: "30"
 reclaimPolicy: Delete # Delete if you want to delete the volume when PVC is deleted, Retain if you want to keep the volume when PVC is deleted
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer
