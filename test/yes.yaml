@@ -1,0 +1,226 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: bankapp-bluegreen
+  namespace: prod
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: bankapp
+  template:
+    metadata:
+      labels:
+        app: bankapp
+        version: pending # This label is used to identify the pending version
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: vault-role
+        vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_USERNAME: "secret/frontend"
+        vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_USERNAME: |
+          {{- with secret "secret/frontend" -}}
+          export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_PASSWORD: "secret/frontend"
+        vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_PASSWORD: |
+          {{- with secret "secret/frontend" -}}
+          export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
+    spec:
+      containers:
+      - name: bankapp
+        image: leoworths/bankapp:v1.0.6
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql:3306/bankapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "{{- with secret \"secret/frontend\" -}}{{ .Data.data.username }}{{- end }}"
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: "{{- with secret \"secret/frontend\" -}}{{ .Data.data.password }}{{- end }}"
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: com.mysql.cj.jdbc.Driver
+        - name: SPRING_JPA_SHOW_SQL
+          value: "true"
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: "update"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+  strategy:
+    blueGreen:
+      autoPromotionEnabled: false
+      activeService: bankapp-active
+      previewService: bankapp-preview
+
+
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: prod
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+      annotations:
+        # Enable Vault Agent Injector for secret injection
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "vault-role"  # The Vault role to be used for accessing secrets
+        vault.hashicorp.com/agent-inject-secret-MYSQL_ROOT_PASSWORD: "secret/mysql"
+        vault.hashicorp.com/agent-inject-template-MYSQL_ROOT_PASSWORD: |
+          {{- with secret "secret/mysql" -}}
+          export MYSQL_ROOT_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-MYSQL_DATABASE: "secret/mysql"
+        vault.hashicorp.com/agent-inject-template-MYSQL_DATABASE: |
+          {{- with secret "secret/mysql" -}}
+          export MYSQL_DATABASE="{{ .Data.data.database }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-MYSQL_USER: "secret/mysql"
+        vault.hashicorp.com/agent-inject-template-MYSQL_USER: |
+          {{- with secret "secret/mysql" -}}
+          export MYSQL_USER="{{ .Data.data.username }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-MYSQL_PASSWORD: "secret/mysql"
+        vault.hashicorp.com/agent-inject-template-MYSQL_PASSWORD: |
+          {{- with secret "secret/mysql" -}}
+          export MYSQL_PASSWORD="{{ .Data.data.password }}"
+          {{- end }}
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "256m"
+          limits:
+            memory: "2Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: ebs-csi-sc  # Use your appropriate storage class
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: prod
+spec:
+  selector:
+    app: mysql
+  ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+
+
+---
+
+#service for argo rollout
+apiVersion: v1
+kind: Service
+metadata:
+  name: bankapp-active 
+  namespace: prod
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: bankapp
+    version: active # This label is used to identify the active version
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bankapp-preview 
+  namespace: prod
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: bankapp
+    version: pending # This label is used to identify the pending version
+
+---
+#create hpa.yaml file
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bankapp-hpa
+  namespace: prod
+spec:
+  maxReplicas: 4
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: bankapp-bluegreen
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+
+
