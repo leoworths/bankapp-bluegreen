@@ -28,8 +28,6 @@ spec:
           {{- with secret "secret/frontend" -}}
           export SPRING_DATASOURCE_PASSWORD = "{{ .Data.data.password }}"
           {{- end }}
-          export SPRING_DATASOURCE_USERNAME = "{{ .Data.data.username }}"
-          {{- end }}
     spec:
       containers:
       - name: bankapp
