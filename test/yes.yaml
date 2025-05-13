@@ -1,3 +1,4 @@
+#blue green rollout
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -17,17 +18,19 @@ spec:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: vault-role
+        vault.hashicorp.com/agent-inject-status: "update"
         vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_USERNAME: "secret/frontend"
         vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_USERNAME: |
           {{- with secret "secret/frontend" -}}
-          export SPRING_DATASOURCE_USERNAME="{{ .Data.data.username }}"
+          export SPRING_DATASOURCE_USERNAME = "{{ .Data.data.username }}"
           {{- end }}
         vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_PASSWORD: "secret/frontend"
         vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_PASSWORD: |
           {{- with secret "secret/frontend" -}}
-          export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.password }}"
+          export SPRING_DATASOURCE_PASSWORD = "{{ .Data.data.password }}"
           {{- end }}
     spec:
+      serviceAccountName: vault-auth
       containers:
       - name: bankapp
         image: leoworths/bankapp:v1.0.6
@@ -38,9 +41,15 @@ spec:
         - name: SPRING_DATASOURCE_URL
           value: jdbc:mysql://mysql:3306/bankapp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
         - name: SPRING_DATASOURCE_USERNAME
-          value: "{{- with secret \"secret/frontend\" -}}{{ .Data.data.username }}{{- end }}"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_USER
         - name: SPRING_DATASOURCE_PASSWORD
-          value: "{{- with secret \"secret/frontend\" -}}{{ .Data.data.password }}{{- end }}"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_PASSWORD
         - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
           value: com.mysql.cj.jdbc.Driver
         - name: SPRING_JPA_SHOW_SQL
@@ -76,10 +85,7 @@ spec:
       activeService: bankapp-active
       previewService: bankapp-preview
 
-
-
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -96,49 +102,93 @@ spec:
       labels:
         app: mysql
       annotations:
-        # Enable Vault Agent Injector for secret injection
         vault.hashicorp.com/agent-inject: "true"
-        vault.hashicorp.com/role: "vault-role"  # The Vault role to be used for accessing secrets
+        vault.hashicorp.com/role: "vault-role"
+        vault.hashicorp.com/agent-inject-status: "update"
         vault.hashicorp.com/agent-inject-secret-MYSQL_ROOT_PASSWORD: "secret/mysql"
         vault.hashicorp.com/agent-inject-template-MYSQL_ROOT_PASSWORD: |
           {{- with secret "secret/mysql" -}}
-          export MYSQL_ROOT_PASSWORD="{{ .Data.data.password }}"
+          export MYSQL_ROOT_PASSWORD="{{ .Data.data.MYSQL_ROOT_PASSWORD }}"
           {{- end }}
+        
         vault.hashicorp.com/agent-inject-secret-MYSQL_DATABASE: "secret/mysql"
         vault.hashicorp.com/agent-inject-template-MYSQL_DATABASE: |
           {{- with secret "secret/mysql" -}}
-          export MYSQL_DATABASE="{{ .Data.data.database }}"
+          export MYSQL_DATABASE="{{ .Data.data.MYSQL_DATABASE }}"
           {{- end }}
-        vault.hashicorp.com/agent-inject-secret-MYSQL_USER: "secret/mysql"
+
+        vault.hashicorp.com/agent-inject-secret-MYSQL_USER: "secret/frontend"
         vault.hashicorp.com/agent-inject-template-MYSQL_USER: |
-          {{- with secret "secret/mysql" -}}
-          export MYSQL_USER="{{ .Data.data.username }}"
+          {{- with secret "secret/frontend" -}}
+          export MYSQL_USER="{{ .Data.data.MYSQL_USER }}"
           {{- end }}
-        vault.hashicorp.com/agent-inject-secret-MYSQL_PASSWORD: "secret/mysql"
+
+        vault.hashicorp.com/agent-inject-secret-MYSQL_PASSWORD: "secret/frontend"
         vault.hashicorp.com/agent-inject-template-MYSQL_PASSWORD: |
-          {{- with secret "secret/mysql" -}}
-          export MYSQL_PASSWORD="{{ .Data.data.password }}"
+          {{- with secret "secret/frontend" -}}
+          export MYSQL_PASSWORD="{{ .Data.data.MYSQL_PASSWORD }}"
           {{- end }}
+
     spec:
+      serviceAccountName: vault-auth
       containers:
-      - name: mysql
-        image: mysql:8.0
-        ports:
-        - containerPort: 3306
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "256m"
-          limits:
-            memory: "2Gi"
-            cpu: "500m"
-        volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "256m"
+            limits:
+              memory: "2Gi"
+              cpu: "500m"
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - |
+              source /vault/secrets/MYSQL_ROOT_PASSWORD
+              source /vault/secrets/MYSQL_DATABASE
+              source /vault/secrets/MYSQL_USER
+              source /vault/secrets/MYSQL_PASSWORD
+              exec docker-entrypoint.sh mysqld
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
       volumes:
-      - name: mysql-persistent-storage
-        persistentVolumeClaim:
-          claimName: mysql-pvc
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+---
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-csi-sc
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  iops: "3000"  # Adjust to your desired IOPS, min 100
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
 
 ---
 apiVersion: v1
