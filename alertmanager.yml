@@ -1,0 +1,36 @@
+#alertmanager configuration
+global:
+  resolve_timeout: 1m
+  #route configuration
+route:
+  receiver: 'devops_team'
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+#receivers configuration
+receivers:
+- name: 'devops_team'
+  email_configs:
+  - to: leoworths@gmail.com
+    from: 'noreply@example.com'
+    smarthost: 'smtp.gmail.com:587'
+    auth_username: leoworths@gmail.com
+    auth_identity: leoworths@gmail.com
+    auth_password: ynihlgitpdcjxazs
+    send_resolved: true
+    require_tls: true
+    headers:
+      Subject: 'Prometheus Alerts' 
+    text: 
+      '{{ range .Alerts }} Hello, \n {{ .Annotations.summary }} \n {{ .Annotations.description }} {{ end }}'
+#inhibit_rules configuration
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['alertname', 'dev', 'instance']
+
+
+

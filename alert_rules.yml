@@ -1,0 +1,101 @@
+#create alert_rules.yaml file
+groups:
+  - name: alert_rules # group name
+    limit: 10 # limit of rules in this group
+    rules:
+      - alert: InstanceDown 
+        expr: up == 0 
+        for: 1m 
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "Endpoint {{ $labels.instance }} is down" 
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes"
+      - alert: WebsiteDown 
+        expr: probe_success == 0 
+        for: 1m 
+        labels:
+          severity: critical 
+        annotations:
+          summary: The website at {{ $labels.instance }} is down
+          description: Website has been down
+      - alert: HostOutOfMemory 
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 25 
+        for: 5m 
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host out of memory (instance {{ $labels.instance }})"
+          description: "Node memory is filling up (< 25% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n  ANNOTATIONS: {{ $annotations }}"
+      - alert: LowDiskSpace 
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}/100 < 50 # alert expression
+        for: 1m
+        labels:
+          severity: warning # severity label
+        annotations:
+          summary: "Host out of Disk space (instance {{ $labels.instance }})"
+          description: "Disk space almost full (< 50% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: HighCpuUsage # alert name
+        expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80 
+        for: 1m
+        labels:
+          severity: warning # severity label
+        annotations:
+          summary: "High CPU usage (instance {{ $labels.instance }})"
+          description: "CPU usage is too high (> 80%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: ServiceDown # alert name
+        expr: up{job="node_exporter"} == 0 # alert expression
+        for: 1m # alert for 5 minutes
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "Service Unavailable (instance {{ $labels.instance }})"
+          description: "The service {{$labels.job}} is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: HostHighCpuLoad
+        expr: (sum by (instance) (rate(node_cpu{job="node_exporter_metrics",mode="idle"}[5m]))) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU load (instance {{ $labels.instance }})"
+          description: "CPU load is too high (> 80%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: WebServerDown # alert name
+        expr: up{job="webserver"}== 0 # alert expression
+        for: 1m # alert for 5 minutes
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "Web server is down (instance {{ $labels.instance }})"
+          description: "Web server {{$labels.job}} is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: HighMemoryUsage # alert name
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80 # alert expression
+        for: 5m # alert for 5 minutes
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "High memory usage (instance {{ $labels.instance }})"
+          description: "Memory usage is too high (> 80%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: HighDiskUsage # alert name
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20 # alert expression
+        for: 5m # alert for 5 minutes
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "High disk usage (instance {{ $labels.instance }})"
+          description: "Disk usage is too high (< 20%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: HighNetworkUsage # alert name
+        expr: sum(rate(container_network_receive_bytes_total{container!="",namespace=~".*"}[5m])) > 100000000 # alert expression
+        for: 5m # alert for 5 minutes
+        labels:
+          severity: warning # severity label
+        annotations:
+          summary: "High network usage (instance {{ $labels.instance }})"
+          description: "Network usage is too high (> 100MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"
+      - alert: FileSystemFull # alert name
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100 < 10 # alert expression
+        for: 5m # alert for 5 minutes
+        labels:
+          severity: critical # severity label
+        annotations:
+          summary: "Filesystem full (instance {{ $labels.instance }})"
+          description: "Filesystem is almost full (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n"

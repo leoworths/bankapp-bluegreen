@@ -1,0 +1,20 @@
+#create hpa.yaml file
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bankapp-hpa
+  namespace: prod
+spec:
+  maxReplicas: 4
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: bankapp-bluegreen
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50

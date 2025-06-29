@@ -1,0 +1,78 @@
+#blue green rollout
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: bankapp-bluegreen
+  namespace: prod
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: bankapp
+  template:
+    metadata:
+      labels:
+        app: bankapp
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "vault-role"
+        vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_USERNAME: "secret/data/frontend"
+        vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_USERNAME: |
+          {{- with secret "secret/data/frontend" -}}
+          export SPRING_DATASOURCE_USERNAME="{{ .Data.data.MYSQL_USER }}"
+          {{- end }}
+        vault.hashicorp.com/agent-inject-secret-SPRING_DATASOURCE_PASSWORD: "secret/data/frontend"
+        vault.hashicorp.com/agent-inject-template-SPRING_DATASOURCE_PASSWORD: |
+          {{- with secret "secret/data/frontend" -}}
+          export SPRING_DATASOURCE_PASSWORD="{{ .Data.data.MYSQL_PASSWORD }}"
+          {{- end }}
+    spec:
+      serviceAccountName: vault-auth
+      containers:
+      - name: bankapp
+        image: leoworths/bankapp:v1.0.20
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql:3306/bankappdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: com.mysql.cj.jdbc.Driver
+        - name: SPRING_JPA_SHOW_SQL
+          value: "true"
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: "update"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+          successThreshold: 1
+  strategy:
+    blueGreen:
+      autoPromotionEnabled: false
+      activeService: bankapp-active
+      previewService: bankapp-preview
+
+
+
+    
