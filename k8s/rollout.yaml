@@ -31,7 +31,7 @@ spec:
       serviceAccountName: vault-auth
       containers:
       - name: bankapp
-        image: leoworths/bankapp:v1.0.20
+        image: leoworths/bankapp:v1.0.5
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
