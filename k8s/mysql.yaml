@@ -55,11 +55,11 @@ spec:
           args:
             - |
               echo "Waiting for Vault secrets to be injected..."
-              while [ ! -s /vault/secrets/MYSQL_ROOT_PASSWORD ]; do sleep 1; done
-              while [ ! -s /vault/secrets/MYSQL_DATABASE ]; do sleep 1; done
+              while [ ! -s /vault/secrets/mysql_root_password ]; do sleep 1; done
+              while [ ! -s /vault/secrets/mysql_database ]; do sleep 1; done
 
-              source /vault/secrets/MYSQL_ROOT_PASSWORD
-              source /vault/secrets/MYSQL_DATABASE
+              source /vault/secrets/mysql_root_password
+              source /vault/secrets/mysql_database
 
               echo "Starting MySQL server with injected secrets..."
               export MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD"
