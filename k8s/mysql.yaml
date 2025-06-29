@@ -29,7 +29,6 @@ spec:
         # TLS trust settings
         vault.hashicorp.com/agent-inject-configmap: "vault-ca-cert"
         vault.hashicorp.com/agent-inject-mount: "/vault/ca"
-        vault.hashicorp.com/agent-inject-mount: "/vault/secrets"
     spec:
       serviceAccountName: vault-auth
       containers:
