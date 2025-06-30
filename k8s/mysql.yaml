@@ -26,8 +26,9 @@ spec:
           {{- with secret "secret/data/mysql" -}}
           export MYSQL_DATABASE="{{ .Data.data.MYSQL_DATABASE }}"
           {{- end }}
-        vault.hashicorp.com/agent-inject-mount: "/vault/secrets"
+        # TLS trust settings
         vault.hashicorp.com/agent-inject-configmap: "vault-ca-cert"
+        vault.hashicorp.com/agent-inject-mount: "/vault/ca"
     spec:
       serviceAccountName: vault-auth
       containers:
@@ -54,14 +55,16 @@ spec:
           args:
             - |
               echo "Waiting for Vault secrets to be injected..."
-              while [ ! -s /vault/secrets/MYSQL_ROOT_PASSWORD ]; do sleep 1; done
-              while [ ! -s /vault/secrets/MYSQL_DATABASE ]; do sleep 1; done
+              while [ ! -s /vault/secrets/mysql_root_password ]; do sleep 1; done
+              while [ ! -s /vault/secrets/mysql_database ]; do sleep 1; done
 
-              source /vault/secrets/MYSQL_ROOT_PASSWORD
-              source /vault/secrets/MYSQL_DATABASE
+              source /vault/secrets/mysql_root_password
+              source /vault/secrets/mysql_database
 
               echo "Starting MySQL server with injected secrets..."
-              exec docker-entrypoint.sh mysqld
+              export MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD"
+              export MYSQL_DATABASE="$MYSQL_DATABASE"
+              exec docker-entrypoint.sh mysqld 
           livenessProbe:
             exec:
               command: ["mysqladmin", "ping", "-h", "127.0.0.1"]
@@ -81,7 +84,6 @@ spec:
         - name: vault-ca
           configMap:
             name: vault-ca-cert
-
 
 ---
 apiVersion: v1
