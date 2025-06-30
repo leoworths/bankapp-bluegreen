@@ -39,8 +39,8 @@ spec:
         args:
           - "-c"
           - |
-            source /vault/secrets/SPRING_DATASOURCE_USERNAME && \
-            source /vault/secrets/SPRING_DATASOURCE_PASSWORD && \
+            source /vault/secrets/sprig_datasource_username && \
+            source /vault/secrets/spring_datasource_password && \
             exec java -jar /app/app.jar
         env:
         - name: SPRING_DATASOURCE_URL
