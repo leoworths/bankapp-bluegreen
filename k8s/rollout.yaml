@@ -35,6 +35,13 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        command: ["/bin/sh"]
+        args:
+          - "-c"
+          - |
+            source /vault/secrets/SPRING_DATASOURCE_USERNAME && \
+            source /vault/secrets/SPRING_DATASOURCE_PASSWORD && \
+            exec java -jar /app/app.jar
         env:
         - name: SPRING_DATASOURCE_URL
           value: jdbc:mysql://mysql:3306/bankappdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
