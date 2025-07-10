@@ -92,3 +92,15 @@ kubectl create configmap vault-ca-cert \
 # kubectl delete secret vault-tls-ha -n vault
 kubectl delete secret vault-tls-ha -n vault
 
+
+
+kubectl get pods -n prod
+
+
+kubectl exec -it <mysql-pod-name> -n prod -- /bin/sh
+
+mysql -u root -p
+
+CREATE USER 'bankapp_user'@'%' IDENTIFIED BY 'StrongPassword123!';
+GRANT ALL PRIVILEGES ON bankappdb.* TO 'bankapp_user'@'%';
+FLUSH PRIVILEGES;

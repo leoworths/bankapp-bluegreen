@@ -84,6 +84,7 @@ spec:
         - name: vault-ca
           configMap:
             name: vault-ca-cert
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

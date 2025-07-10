@@ -31,17 +31,16 @@ spec:
       serviceAccountName: vault-auth
       containers:
       - name: bankapp
-        image: leoworths/bankapp:v1.0.20
+        image: leoworths/bankapp:v1.0.5
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
         command: ["/bin/sh", "-c"]
         args:
           - |
-            echo "Waiting for Vault secrets to be injected..."
-            while [ ! -s /vault/secrets/spring_datasource_username ]; do sleep 1; done
-            while [ ! -s /vault/secrets/spring_datasource_password ]; do sleep 1; done
-            java -jar /app/app.jar
+            source /vault/secrets/spring_datasource_username 
+            source /vault/secrets/spring_datasource_password 
+            exec java -jar /app/app.jar
         env:
         - name: SPRING_DATASOURCE_URL
           value: jdbc:mysql://mysql:3306/bankappdb?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
